@@ -3,7 +3,7 @@ import sys
 USAGE = 'python3 assemble.py reads_file k'
 
 
-def error(message)
+def error(message):
     print('Error: {}'.format(message))
     print(USAGE)
     exit(1)
@@ -21,7 +21,7 @@ def assemble(reads, k):
     # TODO: implement
     
     
-    with open('conitgs.txt', 'w') as f:
+    with open('contigs.txt', 'w') as f:
         f.write('\n'.join(contigs))
 
 
