@@ -18,12 +18,50 @@ def get_kmers(reads, k):
     kmers = []
     # TODO: implement
     return kmers
-    
 
+
+def build_de_bruijn(kmers):
+    nodes = []
+    edges = {}
+    
+    for kmer in kmers:
+        left = kmer[:-1]
+        if left not in nodes:
+            nodes.append(left)
+        
+        right = kmer[1:]
+        if right not in nodes:
+            nodes.append(right)
+    
+        left_index = nodes.index(left)
+        right_index = nodes.index(right)
+        
+        if (left_index, right_index) not in edges:
+            edges[left_index, right_index] = 1
+        else:
+            edges[left_index, right_index] += 1
+            
+    for l, r in edges:
+        print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
+        
+    write_dot(nodes, edges)
+    
+    
+def write_dot(nodes, edges):
+    out = 'digraph mygraph {'
+    for l, r in edges:
+        out += '"{}"->"{}"'.format(nodes[l], nodes[r])
+    out += '}'
+    
+    with open('test.dot', 'w') as f:
+        f.write(out)
+
+        
 def assemble(reads, k):
     contigs = []
     # TODO: implement
     
+    build_de_bruijn(['ATG', 'GCG', 'TGG', 'GGC', 'CGT', 'GTG', 'TGC', 'GCA'])
     
     print('N50 score: {}'.format(n50(contigs)))
     
