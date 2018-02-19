@@ -9,6 +9,10 @@ def error(message):
     exit(1)
 
 
+def n50(contigs):
+    # TODO: implement
+    return -1
+    
 
 def get_kmers(reads, k):
     kmers = []
@@ -20,6 +24,8 @@ def assemble(reads, k):
     contigs = []
     # TODO: implement
     
+    
+    print('N50 score: {}'.format(n50(contigs)))
     
     with open('contigs.txt', 'w') as f:
         f.write('\n'.join(contigs))
