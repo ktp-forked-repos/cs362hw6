@@ -41,17 +41,16 @@ def get_kmers(reads, k):
     :param k: the length of k-mers we want
     :return: the list of all k-mers across the reads
     """
-
-    kmers = set()
-	for kmer in reads:
-		for i in range (len(kmer)-k+1):
-			subs = kmer[i:i+k]
-			kmers.add(subs)
-    return kmers
+    kmers = []
+    for read in reads:
+        for i in range (len(read)-k):
+            kmer = read[i:i+k]
+            kmers.append(kmer)
+        return kmers
 
 
 def build_de_bruijn(kmers):
-    """
+    """x
     Build the de Bruijn graph from a list of k-mers.
     :param kmers: the k-mers to build the graph from
     :return: the pair (nodes, edges)
