@@ -50,6 +50,7 @@ def simulate_reads(sequence, coverage, read_length, error_rate):
 
     # When we replace a nucleotide x wih y, we want to make sure x != y
     replacement = {x: [y for y in NUCLEOTIDES if y != x] for x in NUCLEOTIDES}
+    print(replacement)
     reads = []
     g = len(sequence)
 
@@ -80,6 +81,8 @@ def main(args):
         error('wrong number of arguments')
 
     sequence = parse_fasta(args[0])
+
+    print(len(sequence))
 
     try:
         coverage = int(args[1])
