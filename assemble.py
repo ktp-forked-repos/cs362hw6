@@ -42,8 +42,11 @@ def get_kmers(reads, k):
     :return: the list of all k-mers across the reads
     """
 
-    kmers = []
-    # TODO: implement
+    kmers = set()
+	for kmer in reads:
+		for i in range (len(kmer)-k+1):
+			subs = kmer[i:i+k]
+			kmers.add(subs)
     return kmers
 
 
