@@ -31,6 +31,9 @@ def n50(contigs):
     :return: the integer N50 score
     """
 
+    if len(contigs) == 0:
+        return 0
+
     contigs = sorted(contigs, key=len, reverse=True)
     length = sum(len(contig) for contig in contigs)
 
@@ -51,11 +54,12 @@ def get_kmers(reads, k):
     :return: the list of all k-mers across the reads
     """
 
-    kmers = set()
+    kmers = []
     for read in reads:
-        for i in range(len(read)-k+1):
+        for i in range(len(read)-k):
             kmer = read[i:i+k]
-            kmers.add(kmer)
+            print(kmer)
+            kmers.append(kmer)
 
     return kmers
 
@@ -81,14 +85,14 @@ def build_de_bruijn(kmers):
     
         left_index = nodes.index(left)
         right_index = nodes.index(right)
-        
+
         if (left_index, right_index) not in edges:
             edges[left_index, right_index] = 1
         else:
             edges[left_index, right_index] += 1
             
-    for l, r in edges:
-        print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
+    # for l, r in edges:
+    #     print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
         
     write_dot(nodes, edges)
 
@@ -104,7 +108,8 @@ def write_dot(nodes, edges):
     """
     out = 'digraph mygraph {'
     for l, r in edges:
-        out += '"{}"->"{}"'.format(nodes[l], nodes[r])
+        out += '"{}"->"{}" [label="{}"];\n'.format(nodes[l], nodes[r],
+                                                   edges[l, r])
     out += '}'
     
     with open('test.dot', 'w') as f:
@@ -123,8 +128,7 @@ def assemble(reads, k):
     contigs = []
     # TODO: implement
     
-    nodes, edges = build_de_bruijn(['ATG', 'GCG', 'TGG', 'GGC',
-                                    'CGT', 'GTG', 'TGC', 'GCA'])
+    nodes, edges = build_de_bruijn(get_kmers(reads, k))
     
     print('N50 score: {}'.format(n50(contigs)))
     
