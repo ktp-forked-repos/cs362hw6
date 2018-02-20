@@ -4,23 +4,48 @@ USAGE = 'python3 assemble.py reads_file k'
 
 
 def error(message):
+    """
+    Print an error message and exit the program.
+    :param message: the message to print
+    :return: nothing
+    """
+
     print('Error: {}'.format(message))
     print(USAGE)
     exit(1)
 
 
 def n50(contigs):
+    """
+    Calculate the N50 score of a list of contigs.
+    :param contigs:
+    :return: the integer N50 score
+    """
+
     # TODO: implement
     return -1
     
 
 def get_kmers(reads, k):
+    """
+    Identify all k-mers in a set of reads.
+    :param reads: the reads
+    :param k: the length of k-mers we want
+    :return: the list of all k-mers across the reads
+    """
+
     kmers = []
     # TODO: implement
     return kmers
 
 
 def build_de_bruijn(kmers):
+    """
+    Build the de Bruijn graph from a list of k-mers.
+    :param kmers: the k-mers to build the graph from
+    :return: the pair (nodes, edges)
+    """
+
     nodes = []
     edges = {}
     
@@ -45,9 +70,17 @@ def build_de_bruijn(kmers):
         print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
         
     write_dot(nodes, edges)
+
+    return nodes, edges
     
     
 def write_dot(nodes, edges):
+    """
+    Write a graph to a dot file.
+    :param nodes: a list of nodes in the graph
+    :param edges: a dictionary of the edges in the graph
+    :return: nothing
+    """
     out = 'digraph mygraph {'
     for l, r in edges:
         out += '"{}"->"{}"'.format(nodes[l], nodes[r])
@@ -58,10 +91,19 @@ def write_dot(nodes, edges):
 
         
 def assemble(reads, k):
+    """
+    Assemble a set of reads into a set of contigs using a de Bruijn graph. Write
+    the contigs to the file contigs.txt.
+    :param reads: The set of reads to assemble
+    :param k: the size of k-mer to be used when building the de Bruijn graph
+    :return: nothing
+    """
+
     contigs = []
     # TODO: implement
     
-    build_de_bruijn(['ATG', 'GCG', 'TGG', 'GGC', 'CGT', 'GTG', 'TGC', 'GCA'])
+    nodes, edges = build_de_bruijn(['ATG', 'GCG', 'TGG', 'GGC',
+                                    'CGT', 'GTG', 'TGC', 'GCA'])
     
     print('N50 score: {}'.format(n50(contigs)))
     
