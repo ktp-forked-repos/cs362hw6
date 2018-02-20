@@ -55,7 +55,7 @@ def get_kmers(reads, k):
     """
     kmers = []
     for read in reads:
-        for i in range(len(read)-k):
+        for i in range(len(read)-k+1):
             kmer = read[i:i+k]
             kmers.append(kmer)
 
@@ -140,7 +140,7 @@ def main(args):
         
     try:
         with open(args[0]) as f:
-            reads = f.readlines()
+            reads = f.read().splitlines()
     except FileNotFoundError:
         error('no such file: {}'.format(args[0]))
         
