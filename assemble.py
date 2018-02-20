@@ -1,3 +1,12 @@
+"""
+authors: Kiran Tomlinson and Chae Kim
+date: February 20 2018
+
+This file contains methods for assembling contigs from a set of reads.
+"""
+
+
+
 import sys
 
 USAGE = 'python3 assemble.py reads_file k'
@@ -43,10 +52,11 @@ def get_kmers(reads, k):
     """
 
     kmers = set()
-	for kmer in reads:
-		for i in range (len(kmer)-k+1):
-			subs = kmer[i:i+k]
-			kmers.add(subs)
+    for read in reads:
+        for i in range(len(read)-k+1):
+            kmer = read[i:i+k]
+            kmers.add(kmer)
+
     return kmers
 
 

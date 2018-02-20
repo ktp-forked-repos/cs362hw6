@@ -1,5 +1,5 @@
 """
-author: Kiran Tomlinson
+authors: Kiran Tomlinson and Chae Kim
 date: February 16 2018
 
 This file contains methods for simulating noisy reads from a genome.
