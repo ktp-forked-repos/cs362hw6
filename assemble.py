@@ -58,7 +58,6 @@ def get_kmers(reads, k):
     for read in reads:
         for i in range(len(read)-k):
             kmer = read[i:i+k]
-            print(kmer)
             kmers.append(kmer)
 
     return kmers
