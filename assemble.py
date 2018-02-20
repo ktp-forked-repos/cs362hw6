@@ -18,12 +18,20 @@ def error(message):
 def n50(contigs):
     """
     Calculate the N50 score of a list of contigs.
-    :param contigs:
+    :param contigs: a list of contigs
     :return: the integer N50 score
     """
 
-    # TODO: implement
-    return -1
+    contigs = sorted(contigs, key=len, reverse=True)
+    length = sum(len(contig) for contig in contigs)
+
+    fraction = 0
+    index = -1
+    while fraction < length / 2:
+        index += 1
+        fraction += len(contigs[index])
+
+    return len(contigs[index])
     
 
 def get_kmers(reads, k):
