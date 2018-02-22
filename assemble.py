@@ -83,13 +83,35 @@ def build_de_bruijn(kmers):
             edges[left, right] = 1
         else:
             edges[left, right] += 1
-        
-    write_dot(edges)
 
     return nodes, edges
 
 
+def delete_node(node, nodes, edges):
+    """
+    Delete a node from the graph.
+    :param node: the node to delete
+    :param nodes: the set of nodes
+    :param edges: the dictionary of edges
+    :return: nothing
+    """
+    nodes.remove(node)
+    for x, y in set(edges.keys()):
+        if x == node or y == node:
+            del edges[x, y]
+
+
 def remove_tips(nodes, edges, k):
+    """
+    Remove all tips from the de Bruijn graph. A tip is a node that is
+    disconnected at one end and whose label is shorter than 2k.
+    :param nodes: the set of nodes in the graph
+    :param edges: the dictionary of edges
+    :param k: the k value used to create the graph
+    :return: nothing
+    """
+    tips = []
+
     for x in nodes:
         has_incoming = any((y, x) in edges for y in nodes)
         has_outgoing = any((x, y) in edges for y in nodes)
@@ -98,13 +120,17 @@ def remove_tips(nodes, edges, k):
             if len(x) < 2 * k:
                 in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
                 print('Trim tip with incoming sum: {}'.format(in_sum))
+                tips.append(x)
+
+    for tip in tips:
+        delete_node(tip, nodes, edges)
 
     
-def write_dot(edges):
+def write_dot(edges, name):
     """
     Write a graph to a dot file.
-    :param nodes: a list of nodes in the graph
     :param edges: a dictionary of the edges in the graph
+    :param name: the name of the dot file to write
     :return: nothing
     """
     out = 'digraph mygraph {'
@@ -113,7 +139,7 @@ def write_dot(edges):
                                                    edges[left, right])
     out += '}'
     
-    with open('test.dot', 'w') as f:
+    with open('{}.dot'.format(name), 'w') as f:
         f.write(out)
 
         
@@ -131,8 +157,10 @@ def assemble(reads, k):
     
     nodes, edges = build_de_bruijn(get_kmers(reads, k))
 
+    write_dot(edges, 'untrimmed')
     remove_tips(nodes, edges, k)
-    
+    write_dot(edges, 'trimmed')
+
     print('N50 score: {}'.format(n50(contigs)))
     
     with open('contigs.txt', 'w') as f:
