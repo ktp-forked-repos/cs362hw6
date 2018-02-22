@@ -69,35 +69,38 @@ def build_de_bruijn(kmers):
     :return: the pair (nodes, edges)
     """
 
-    nodes = []
+    nodes = set()
     edges = {}
     
     for kmer in kmers:
         left = kmer[:-1]
-        if left not in nodes:
-            nodes.append(left)
-        
-        right = kmer[1:]
-        if right not in nodes:
-            nodes.append(right)
-    
-        left_index = nodes.index(left)
-        right_index = nodes.index(right)
+        nodes.add(left)
 
-        if (left_index, right_index) not in edges:
-            edges[left_index, right_index] = 1
+        right = kmer[1:]
+        nodes.add(right)
+
+        if (left, right) not in edges:
+            edges[left, right] = 1
         else:
-            edges[left_index, right_index] += 1
-            
-    # for l, r in edges:
-    #     print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
+            edges[left, right] += 1
         
-    write_dot(nodes, edges)
+    write_dot(edges)
 
     return nodes, edges
+
+
+def remove_tips(nodes, edges, k):
+    for x in nodes:
+        has_incoming = any((y, x) in edges for y in nodes)
+        has_outgoing = any((x, y) in edges for y in nodes)
+
+        if not has_incoming or not has_outgoing:
+            if len(x) < 2 * k:
+                in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
+                print('Trim tip with incoming sum: {}'.format(in_sum))
+
     
-    
-def write_dot(nodes, edges):
+def write_dot(edges):
     """
     Write a graph to a dot file.
     :param nodes: a list of nodes in the graph
@@ -105,9 +108,9 @@ def write_dot(nodes, edges):
     :return: nothing
     """
     out = 'digraph mygraph {'
-    for l, r in edges:
-        out += '"{}"->"{}" [label="{}"];\n'.format(nodes[l], nodes[r],
-                                                   edges[l, r])
+    for left, right in edges:
+        out += '"{}"->"{}" [label="{}"];\n'.format(left, right,
+                                                   edges[left, right])
     out += '}'
     
     with open('test.dot', 'w') as f:
@@ -127,6 +130,8 @@ def assemble(reads, k):
     # TODO: implement
     
     nodes, edges = build_de_bruijn(get_kmers(reads, k))
+
+    remove_tips(nodes, edges, k)
     
     print('N50 score: {}'.format(n50(contigs)))
     
