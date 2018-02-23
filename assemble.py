@@ -55,7 +55,7 @@ def get_kmers(reads, k):
     """
     kmers = []
     for read in reads:
-        for i in range(len(read)-k):
+        for i in range(len(read)-k+1):
             kmer = read[i:i+k]
             kmers.append(kmer)
 
@@ -69,48 +69,77 @@ def build_de_bruijn(kmers):
     :return: the pair (nodes, edges)
     """
 
-    nodes = []
+    nodes = set()
     edges = {}
     
     for kmer in kmers:
         left = kmer[:-1]
-        if left not in nodes:
-            nodes.append(left)
-        
-        right = kmer[1:]
-        if right not in nodes:
-            nodes.append(right)
-    
-        left_index = nodes.index(left)
-        right_index = nodes.index(right)
+        nodes.add(left)
 
-        if (left_index, right_index) not in edges:
-            edges[left_index, right_index] = 1
+        right = kmer[1:]
+        nodes.add(right)
+
+        if (left, right) not in edges:
+            edges[left, right] = 1
         else:
-            edges[left_index, right_index] += 1
-            
-    # for l, r in edges:
-    #     print('{} -> {} ({})'.format(nodes[l], nodes[r], edges[l, r]))
-        
-    write_dot(nodes, edges)
+            edges[left, right] += 1
 
     return nodes, edges
+
+
+def delete_node(node, nodes, edges):
+    """
+    Delete a node from the graph.
+    :param node: the node to delete
+    :param nodes: the set of nodes
+    :param edges: the dictionary of edges
+    :return: nothing
+    """
+    nodes.remove(node)
+    for x, y in set(edges.keys()):
+        if x == node or y == node:
+            del edges[x, y]
+
+
+def remove_tips(nodes, edges, k):
+    """
+    Remove all tips from the de Bruijn graph. A tip is a node that is
+    disconnected at one end and whose label is shorter than 2k.
+    :param nodes: the set of nodes in the graph
+    :param edges: the dictionary of edges
+    :param k: the k value used to create the graph
+    :return: nothing
+    """
+    tips = []
+
+    for x in nodes:
+        has_incoming = any((y, x) in edges for y in nodes)
+        has_outgoing = any((x, y) in edges for y in nodes)
+
+        if not has_incoming or not has_outgoing:
+            if len(x) < 2 * k:
+                in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
+                print('Trim tip with incoming sum: {}'.format(in_sum))
+                tips.append(x)
+
+    for tip in tips:
+        delete_node(tip, nodes, edges)
+
     
-    
-def write_dot(nodes, edges):
+def write_dot(edges, name):
     """
     Write a graph to a dot file.
-    :param nodes: a list of nodes in the graph
     :param edges: a dictionary of the edges in the graph
+    :param name: the name of the dot file to write
     :return: nothing
     """
     out = 'digraph mygraph {'
-    for l, r in edges:
-        out += '"{}"->"{}" [label="{}"];\n'.format(nodes[l], nodes[r],
-                                                   edges[l, r])
+    for left, right in edges:
+        out += '"{}"->"{}" [label="{}"];\n'.format(left, right,
+                                                   edges[left, right])
     out += '}'
     
-    with open('test.dot', 'w') as f:
+    with open('{}.dot'.format(name), 'w') as f:
         f.write(out)
         
 def collapse(nodes, edges):
@@ -158,7 +187,11 @@ def assemble(reads, k):
     # TODO: implement
     
     nodes, edges = build_de_bruijn(get_kmers(reads, k))
-    
+
+    write_dot(edges, 'untrimmed')
+    remove_tips(nodes, edges, k)
+    write_dot(edges, 'trimmed')
+
     print('N50 score: {}'.format(n50(contigs)))
     
     with open('contigs.txt', 'w') as f:
@@ -171,7 +204,7 @@ def main(args):
         
     try:
         with open(args[0]) as f:
-            reads = f.readlines()
+            reads = f.read().splitlines()
     except FileNotFoundError:
         error('no such file: {}'.format(args[0]))
         
