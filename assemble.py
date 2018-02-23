@@ -143,6 +143,12 @@ def write_dot(edges, name):
         f.write(out)
         
 def collapse(nodes, edges):
+    """
+    Identify all k-mers in a set of reads.
+    :param nodes: a list of nodes obtained by build_de_bruijn
+    :param edges: a dictionary of edges in the graph
+    :return: the updated nodes and edges
+    """
     colList = []
     newKey = []
     numNodes = len(nodes)
@@ -163,12 +169,13 @@ def collapse(nodes, edges):
         #newList.append(new)
     
     for x,y in edges:
-        for k in range numNodes if (x, k) in edges:
-            edges[new, k] = edges[x, k]
-            del(edges[x,k])
-        for k in range numNodes if (k, y) in edges:
-            edges[k, new] = edges[k, y]
-            del(edges[k,y])
+        for k in range numNodes:
+            if (x, k) in edges:
+                edges[new, k] = edges[x, k]
+                del(edges[x,k])
+            if (k, y) in edges:
+                edges[k, new] = edges[k, y]
+                del(edges[k,y])
             
     return (nodes, edges)
 
