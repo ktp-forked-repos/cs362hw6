@@ -74,6 +74,7 @@ def main(args):
     Take in command line args and create a simulated read file to specification.
     :param args: the command line args passed in
     :return: nothing
+    Write to the text file
     """
 
     if len(args) != 4:

@@ -112,8 +112,39 @@ def write_dot(nodes, edges):
     
     with open('test.dot', 'w') as f:
         f.write(out)
-
         
+def collapse(nodes, edges):
+    colList = []
+    newKey = []
+    numNodes = len(nodes)
+    #newList=[]
+    new = ""
+    
+    for x,y in edges:
+        xEdge = sum(1 for k in range numNodes if (x, k) in edges)
+        yEdge = sum(1 for k in range numNodes if (k, y) in edges)
+        if (xEdge == 1) and (yEdge == 1):
+            colList.append((x,y))
+            
+    for pair in colList:
+        new = pair[0]+pair[:-1]
+        nodes.remove(pair[0])
+        nodes.remove(pair[1])
+        nodes.append(new)
+        #newList.append(new)
+    
+    for x,y in edges:
+        for k in range numNodes if (x, k) in edges:
+            edges[new, k] = edges[x, k]
+            del(edges[x,k])
+        for k in range numNodes if (k, y) in edges:
+            edges[k, new] = edges[k, y]
+            del(edges[k,y])
+            
+    return (nodes, edges)
+
+
+
 def assemble(reads, k):
     """
     Assemble a set of reads into a set of contigs using a de Bruijn graph. Write
