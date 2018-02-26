@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-python3 simulate.py sample_small.fasta 5 10 0.05
+python3 simulate.py sample_small.fasta 2 10 0
 python3 assemble.py reads.txt 5
-dot -Tpdf trimmed.dot -o trimmed.pdf
-open trimmed.pdf
-dot -Tpdf untrimmed.dot -o untrimmed.pdf
-open untrimmed.pdf
+dot -Tpdf before.dot -o before.pdf
+open before.pdf
+dot -Tpdf after.dot -o after.pdf
+open after.pdf

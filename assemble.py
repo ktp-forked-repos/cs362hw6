@@ -158,26 +158,33 @@ def collapse(nodes, edges):
     for x,y in edges:
         xEdge = sum(1 for k in nodes if (x, k) in edges)
         yEdge = sum(1 for k in nodes if (k, y) in edges)
-        if (xEdge == 1) and (yEdge == 1):
-            colList.add((x,y))
+        # print('--> ', xEdge, yEdge)
+        if (xEdge <= 1) and (yEdge <= 1):
+            colList.append((x,y))
             
-    for pair in colList:
-        new = pair[0]+pair[:-1]
-        nodes.remove(pair[0])
-        nodes.remove(pair[1])
-        nodes.append(new)
-        #newList.append(new)
-    
-    for x,y in edges:
-        for k in range(numNodes):
-            if (x, k) in edges:
-                edges[new, k] = edges[x, k]
-                del(edges[x,k])
-            if (k, y) in edges:
-                edges[k, new] = edges[k, y]
-                del(edges[k,y])
-            
-    return (nodes, edges)
+    for x, y in colList:
+        print('remove {}, {}'.format(x, y))
+        new = x + y[-1]
+        print(new)
+        nodes.remove(x)
+        nodes.remove(y)
+        nodes.add(new)
+
+        for i in range(len(colList)):
+            if colList[i][0] == y:
+                colList[i] = (new, colList[i][1])
+            if colList[i][1] == x:
+                colList[i] = (colList[i][0], new)
+
+        for k in nodes:
+            if (k, x) in edges:
+                edges[k, new] = edges[k, x]
+                edges.pop((k, x))
+            if (y, k) in edges:
+                edges[new, k] = edges[y, k]
+                edges.pop((y, k))
+
+        edges.pop((x, y))
 
 
 
