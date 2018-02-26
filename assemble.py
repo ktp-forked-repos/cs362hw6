@@ -8,6 +8,7 @@ This file contains methods for assembling contigs from a set of reads.
 
 
 import sys
+from random import choice
 
 USAGE = 'python3 assemble.py reads_file k'
 
@@ -44,6 +45,21 @@ def n50(contigs):
         fraction += len(contigs[index])
 
     return len(contigs[index])
+
+
+def set_map(dictionary, key, values):
+    """
+    Adds a list of values to a key in dictionary, creating a new dictionary
+    entry if necessary
+    :param dictionary:
+    :param key:
+    :param values: a set of values
+    :return: nothing
+    """
+    if key not in dictionary:
+        dictionary[key] = values
+    else:
+        dictionary[key] = dictionary[key].union(values)
     
 
 def get_kmers(reads, k):
@@ -54,37 +70,44 @@ def get_kmers(reads, k):
     :return: the list of all k-mers across the reads
     """
     kmers = []
+    kmer_read_map = {}
     for read in reads:
         for i in range(len(read)-k+1):
             kmer = read[i:i+k]
             kmers.append(kmer)
+            set_map(kmer_read_map, kmer, {read})
 
-    return kmers
+    return kmers, kmer_read_map
 
 
-def build_de_bruijn(kmers):
+def build_de_bruijn(kmers, kmer_read_map):
     """
     Build the de Bruijn graph from a list of k-mers.
+    :param kmer_read_map: a dictionary storing which reads a kmer is in
     :param kmers: the k-mers to build the graph from
-    :return: the pair (nodes, edges)
+    :return: the tuple (nodes, edges, read_map), where read_map stores which
+    reads a node is in
     """
 
     nodes = set()
     edges = {}
+    read_map = {}
     
     for kmer in kmers:
         left = kmer[:-1]
         nodes.add(left)
+        set_map(read_map, left, kmer_read_map[kmer])
 
         right = kmer[1:]
         nodes.add(right)
+        set_map(read_map, right, kmer_read_map[kmer])
 
         if (left, right) not in edges:
             edges[left, right] = 1
         else:
             edges[left, right] += 1
 
-    return nodes, edges
+    return nodes, edges, read_map
 
 
 def delete_node(node, nodes, edges):
@@ -191,6 +214,36 @@ def collapse(nodes, edges):
         edges.pop((x, y))
 
 
+def connected_components(nodes, edges):
+    neighbors = {}
+    for node in nodes:
+        neighbors[node] = set()
+
+    for x, y in edges:
+        neighbors[x].add(y)
+        neighbors[y].add(x)
+
+    unvisited = nodes.copy()
+    components = []
+
+    while len(unvisited) > 0:
+        component = []
+        to_visit = [unvisited.pop()]
+        visited = to_visit[:]
+
+        while len(to_visit) > 0:
+            current = to_visit.pop()
+            component.append(current)
+            unvisited.discard(current)
+            for neighbor in neighbors[current]:
+                if neighbor not in visited:
+                    to_visit.append(neighbor)
+                    visited.append(neighbor)
+
+        components.append(component)
+
+    return components
+
 
 def assemble(reads, k):
     """
@@ -204,12 +257,12 @@ def assemble(reads, k):
     contigs = []
     # TODO: implement
     
-    nodes, edges = build_de_bruijn(get_kmers(reads, k))
+    nodes, edges, read_map = build_de_bruijn(*get_kmers(reads, k))
+    components = connected_components(nodes, edges)
+
 
     write_dot(nodes, edges, 'before')
-    print(len(nodes))
-    collapse(nodes, edges)
-    print(len(nodes))
+    # collapse(nodes, edges)
 
     # remove_tips(nodes, edges, k)
     write_dot(nodes, edges, 'after')
