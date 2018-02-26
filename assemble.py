@@ -119,14 +119,14 @@ def remove_tips(nodes, edges, k):
         if not has_incoming or not has_outgoing:
             if len(x) < 2 * k:
                 in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
-                print('Trim tip with incoming sum: {}'.format(in_sum))
+                # print('Trim tip with incoming sum: {}'.format(in_sum))
                 tips.append(x)
 
     for tip in tips:
         delete_node(tip, nodes, edges)
 
     
-def write_dot(edges, name):
+def write_dot(nodes, edges, name):
     """
     Write a graph to a dot file.
     :param edges: a dictionary of the edges in the graph
@@ -134,6 +134,9 @@ def write_dot(edges, name):
     :return: nothing
     """
     out = 'digraph mygraph {'
+    for node in nodes:
+        out += '"{}";\n'.format(node)
+
     for left, right in edges:
         out += '"{}"->"{}" [label="{}"];\n'.format(left, right,
                                                    edges[left, right])
@@ -141,7 +144,8 @@ def write_dot(edges, name):
     
     with open('{}.dot'.format(name), 'w') as f:
         f.write(out)
-        
+
+
 def collapse(nodes, edges):
     """
     Identify all k-mers in a set of reads.
@@ -156,28 +160,35 @@ def collapse(nodes, edges):
     new = ""
     
     for x,y in edges:
-        xEdge = sum(1 for k in range numNodes if (x, k) in edges)
-        yEdge = sum(1 for k in range numNodes if (k, y) in edges)
-        if (xEdge == 1) and (yEdge == 1):
+        xEdge = sum(1 for k in nodes if (x, k) in edges)
+        yEdge = sum(1 for k in nodes if (k, y) in edges)
+        # print('--> ', xEdge, yEdge)
+        if (xEdge <= 1) and (yEdge <= 1):
             colList.append((x,y))
             
-    for pair in colList:
-        new = pair[0]+pair[:-1]
-        nodes.remove(pair[0])
-        nodes.remove(pair[1])
-        nodes.append(new)
-        #newList.append(new)
-    
-    for x,y in edges:
-        for k in range numNodes:
-            if (x, k) in edges:
-                edges[new, k] = edges[x, k]
-                del(edges[x,k])
-            if (k, y) in edges:
-                edges[k, new] = edges[k, y]
-                del(edges[k,y])
-            
-    return (nodes, edges)
+    for x, y in colList:
+        print('remove {}, {}'.format(x, y))
+        new = x + y[-1]
+        print(new)
+        nodes.remove(x)
+        nodes.remove(y)
+        nodes.add(new)
+
+        for i in range(len(colList)):
+            if colList[i][0] == y:
+                colList[i] = (new, colList[i][1])
+            if colList[i][1] == x:
+                colList[i] = (colList[i][0], new)
+
+        for k in nodes:
+            if (k, x) in edges:
+                edges[k, new] = edges[k, x]
+                edges.pop((k, x))
+            if (y, k) in edges:
+                edges[new, k] = edges[y, k]
+                edges.pop((y, k))
+
+        edges.pop((x, y))
 
 
 
@@ -195,9 +206,13 @@ def assemble(reads, k):
     
     nodes, edges = build_de_bruijn(get_kmers(reads, k))
 
-    write_dot(edges, 'untrimmed')
-    remove_tips(nodes, edges, k)
-    write_dot(edges, 'trimmed')
+    write_dot(nodes, edges, 'before')
+    print(len(nodes))
+    collapse(nodes, edges)
+    print(len(nodes))
+
+    # remove_tips(nodes, edges, k)
+    write_dot(nodes, edges, 'after')
 
     print('N50 score: {}'.format(n50(contigs)))
     
