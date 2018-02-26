@@ -156,10 +156,10 @@ def collapse(nodes, edges):
     new = ""
     
     for x,y in edges:
-        xEdge = sum(1 for k in range numNodes if (x, k) in edges)
-        yEdge = sum(1 for k in range numNodes if (k, y) in edges)
+        xEdge = sum(1 for k in nodes if (x, k) in edges)
+        yEdge = sum(1 for k in nodes if (k, y) in edges)
         if (xEdge == 1) and (yEdge == 1):
-            colList.append((x,y))
+            colList.add((x,y))
             
     for pair in colList:
         new = pair[0]+pair[:-1]
@@ -169,7 +169,7 @@ def collapse(nodes, edges):
         #newList.append(new)
     
     for x,y in edges:
-        for k in range numNodes:
+        for k in range(numNodes):
             if (x, k) in edges:
                 edges[new, k] = edges[x, k]
                 del(edges[x,k])
