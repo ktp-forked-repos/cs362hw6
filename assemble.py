@@ -5,8 +5,6 @@ date: February 20 2018
 This file contains methods for assembling contigs from a set of reads.
 """
 
-
-
 import sys
 from random import choice
 
@@ -255,11 +253,124 @@ def assemble(reads, k):
     """
 
     contigs = []
-    # TODO: implement
-    
+
     nodes, edges, read_map = build_de_bruijn(*get_kmers(reads, k))
     components = connected_components(nodes, edges)
 
+    neighbors = {}
+    for node in nodes:
+        neighbors[node] = set()
+
+    for x, y in edges:
+        neighbors[x].add(y)
+
+
+    in_neighbors = {}
+    for node in nodes:
+        in_neighbors[node] = set()
+
+    for x, y in edges:
+        in_neighbors[y].add(x)
+
+
+    node_map = {}
+    for read in reads:
+        split_read = []
+        for i in range(len(read)-k+2):
+            split_read.append(read[i:i+k-1])
+        node_map[read] = split_read
+
+    remaining_reads = set(reads)
+    visited = set()
+
+    while len(remaining_reads) != 0:
+        # print('Choosing from', remaining_reads)
+        read = remaining_reads.pop()
+        # print('PICKED', read)
+
+        # Skip reads with no kmers (edge effect)
+        if len(node_map[read]) == 0:
+            continue
+
+        # Skip reads we have covered
+        if len(set(node_map[read]).difference(visited)) == 0:
+            continue
+
+        start = node_map[read][0]
+        # print('START at', start)
+
+        # print('mark all as visited:', node_map[read])
+        node = node_map[read][-1]
+        visited = visited.union(node_map[read])
+        contig = read[1:-1]
+
+        # print(' start at:', node)
+
+        for direction in ('forward', 'backward'):
+            # print(direction)
+            stuck = False
+            while not stuck:
+                # print('visit', node)
+                # Visit node, add to contig
+                visited.add(node)
+
+                if direction == 'forward':
+                    contig += node[-1]
+                else:
+                    contig = node[0] + contig
+
+                # If we have no unvisited neighbors, we're stuck
+                next_options = neighbors[node].difference(visited) \
+                    if direction == 'forward' \
+                    else in_neighbors[node].difference(visited)
+
+                # print('neighbors:', neighbors[node] if direction == 'forward' else in_neighbors[node])
+                # print('visited:', visited)
+                # print('next_options:', next_options)
+
+                if len(next_options) == 0:
+                    # print('Dead end!')
+                    # print('neighbors:', neighbors[node] if direction == 'forward' else in_neighbors[node])
+                    stuck = True
+                    continue
+
+                # If we can, move to a in_neighbor on the same read
+                # Otherwise, move to a in_neighbor on an unseen read
+                next_node = None
+                backup_node = None
+                for in_neighbor in next_options:
+                    if read in read_map[in_neighbor]:
+                        next_node = in_neighbor
+                    elif len(read_map[in_neighbor].intersection(remaining_reads)) > 0:
+                        backup_node = in_neighbor
+
+                # If we aren't staying on the same read, this read is done
+                if next_node is None:
+                    # print('Done with read')
+
+                    # If we have no neighbors to visit at all, we're stuck
+                    if backup_node is None:
+                        print('TOTALLY STUCK')
+                        stuck = True
+                        continue
+
+                    # Go to the back up node, move to new read
+                    node = backup_node
+                    read = read_map[node].intersection(remaining_reads).pop()
+                    # print('MOVING TO READ', read)
+                    remaining_reads.remove(read)
+                    # print(remaining_reads)
+                else:
+                    node = next_node
+
+            node = start
+
+
+        print('BUILT', contig)
+
+        contigs.append(contig)
+
+    print(contigs)
 
     write_dot(nodes, edges, 'before')
     # collapse(nodes, edges)
