@@ -357,8 +357,6 @@ def assemble(reads, k, dot):
 
         write_dot(nodes, edges, 'after')
 
-
-
     print('N50 score: {}'.format(n50(contigs)))
     with open('contigs.txt', 'w') as f:
         f.write('\n'.join(contigs))
