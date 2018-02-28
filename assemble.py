@@ -162,10 +162,10 @@ def write_dot(edges, name):
     with open('{}.dot'.format(name), 'w') as f:
         f.write(out)
         
-def collapse(nodes, edges):
+def collapse(nodes, edges, in_neighbors, out_neighbors):
     """
     Identify all k-mers in a set of reads.
-    :param nodes: a list of nodes obtained by build_de_bruijn
+    :param nodes: a set of nodes obtained by build_de_bruijn
     :param edges: a dictionary of edges in the graph
     :return: the updated nodes and edges
     """
@@ -173,8 +173,8 @@ def collapse(nodes, edges):
     chains = []
     
     for x,y in edges:
-        xEdge = sum(1 for k in nodes if (x, k) in edges)
-        yEdge = sum(1 for k in nodes if (k, y) in edges)
+        xEdge = len(out_neighbors[x])
+        yEdge = len(in_neighbors[y])
         # print('--> ', xEdge, yEdge)
         if (xEdge <= 1) and (yEdge <= 1):
             ends_with_x = None
@@ -197,9 +197,16 @@ def collapse(nodes, edges):
     print(chains)
             
     for chain in chains:
-        # Merge them
-        pass
-
+        new = chain[0] + "".join(node[-1] for node in chain[1:])
+        nodes.add(new)
+        for neighbor in in_neighbors[chain[0]]:
+            edges[neighbor, new] = edges[neighbor, chain[0]]
+        for neighbor in out_neighbors[chain[-1]]:
+            edges[new, neighbor] = edges[chain[-1], neighbor]
+        for node in chain:
+            delete_node(node, nodes, edges)
+    
+        
 
 def connected_components(nodes, edges):
     neighbors = {}
