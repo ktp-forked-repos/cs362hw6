@@ -121,7 +121,7 @@ def delete_node(node, nodes, edges):
             edges.pop((x, y))
 
 
-def remove_tips(nodes, edges, k, in_neighbors, out_neighbors):
+def remove_tips(nodes, edges, k):
     """
     Remove all tips from the de Bruijn graph. A tip is a node that is
     disconnected at one end and whose label is shorter than 2k.
@@ -131,6 +131,8 @@ def remove_tips(nodes, edges, k, in_neighbors, out_neighbors):
     :return: nothing
     """
     tips = []
+
+    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
 
     for x in nodes:
         has_incoming = len(in_neighbors[x]) == 0
@@ -284,7 +286,7 @@ def get_neighbors(nodes, edges):
     return in_neighbors, out_neighbors
 
 
-def assemble(reads, k):
+def assemble(reads, k, dot):
     """
     Assemble a set of reads into a set of contigs using a de Bruijn graph. Write
     the contigs to the file contigs.txt.
@@ -346,15 +348,16 @@ def assemble(reads, k):
 
         contigs.append(contig)
 
-    print(contigs)
+    if dot:
+        write_dot(nodes, edges, 'before')
 
-    # write_dot(nodes, edges, 'before')
-    #
-    # collapse(nodes, edges)
-    # remove_tips(nodes, edges, k)
-    # collapse(nodes, edges)
-    #
-    # write_dot(nodes, edges, 'after')
+        collapse(nodes, edges)
+        remove_tips(nodes, edges, k)
+        collapse(nodes, edges)
+
+        write_dot(nodes, edges, 'after')
+
+
 
     print('N50 score: {}'.format(n50(contigs)))
     with open('contigs.txt', 'w') as f:
@@ -362,8 +365,14 @@ def assemble(reads, k):
 
 
 def main(args):
+    dot = False
+    if '-d' in args:
+        args.remove('-d')
+        dot = True
+
     if len(args) != 2:
         error('wrong number of arguments')
+
         
     try:
         with open(args[0]) as f:
@@ -376,7 +385,7 @@ def main(args):
     except ValueError:
         error('k must be an integer')
         
-    assemble(reads, k)
+    assemble(reads, k, dot)
     
 if __name__ == '__main__':
     main(sys.argv[1:])
