@@ -149,42 +149,35 @@ def collapse(nodes, edges):
     :param edges: a dictionary of edges in the graph
     :return: the updated nodes and edges
     """
-    colList = []
-    newKey = []
-    numNodes = len(nodes)
-    #newList=[]
-    new = ""
+
+    chains = []
     
     for x,y in edges:
         xEdge = sum(1 for k in nodes if (x, k) in edges)
         yEdge = sum(1 for k in nodes if (k, y) in edges)
         # print('--> ', xEdge, yEdge)
         if (xEdge <= 1) and (yEdge <= 1):
-            colList.append((x,y))
+            ends_with_x = None
+            starts_with_y = None
+            for i, chain in enumerate(chains):
+                if chain[-1] == x:
+                    ends_with_x = i
+                elif chain[0] == y:
+                    starts_with_y = i
+            if ends_with_x is not None and starts_with_y is not None:
+                chains[ends_with_x].extend(chains[starts_with_y])
+                chains.pop(starts_with_y)
+            elif ends_with_x is not None:
+                chains[ends_with_x].append(y)
+            elif starts_with_y is not None:
+                chains[starts_with_y].insert(0, x)
+            else:
+                chains.append([x, y])
+                
             
-    for x, y in colList:
-        print('remove {}, {}'.format(x, y))
-        new = x + y[-1]
-        print(new)
-        nodes.remove(x)
-        nodes.remove(y)
-        nodes.add(new)
-
-        for i in range(len(colList)):
-            if colList[i][0] == y:
-                colList[i] = (new, colList[i][1])
-            if colList[i][1] == x:
-                colList[i] = (colList[i][0], new)
-
-        for k in nodes:
-            if (k, x) in edges:
-                edges[k, new] = edges[k, x]
-                edges.pop((k, x))
-            if (y, k) in edges:
-                edges[new, k] = edges[y, k]
-                edges.pop((y, k))
-
-        edges.pop((x, y))
+    for chain in chains:
+        # Merge them
+        pass
 
 
 
