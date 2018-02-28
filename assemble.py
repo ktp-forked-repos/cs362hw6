@@ -296,6 +296,8 @@ def assemble(reads, k):
 
     nodes, edges, node_read_map = build_de_bruijn(*get_kmers(reads, k))
 
+    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
+
     # Map from reads to their nodes
     read_node_map = {}
     for read in reads:
@@ -304,8 +306,6 @@ def assemble(reads, k):
             split_read.append(read[i:i + k - 1])
         read_node_map[read] = split_read
 
-    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
-    print(len(in_neighbors))
 
     # Build contigs from reads
     contigs = []
@@ -349,8 +349,8 @@ def assemble(reads, k):
 
     write_dot(nodes, edges, 'before')
     collapse(nodes, edges)
+    write_dot(nodes, edges, 'after')
     remove_tips(nodes, edges, k)
-    collapse(nodes, edges)
     write_dot(nodes, edges, 'after')
 
     print('N50 score: {}'.format(n50(contigs)))
