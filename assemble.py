@@ -115,13 +115,13 @@ def delete_node(node, nodes, edges):
     :param edges: the dictionary of edges
     :return: nothing
     """
-    nodes.remove(node)
+    nodes.discard(node)
     for x, y in set(edges.keys()):
         if x == node or y == node:
             edges.pop((x, y))
 
 
-def remove_tips(nodes, edges, k):
+def remove_tips(nodes, edges, k, in_neighbors, out_neighbors):
     """
     Remove all tips from the de Bruijn graph. A tip is a node that is
     disconnected at one end and whose label is shorter than 2k.
@@ -133,12 +133,11 @@ def remove_tips(nodes, edges, k):
     tips = []
 
     for x in nodes:
-        has_incoming = any((y, x) in edges for y in nodes)
-        has_outgoing = any((x, y) in edges for y in nodes)
+        has_incoming = len(in_neighbors[x]) == 0
+        has_outgoing = len(out_neighbors[x]) == 0
 
         if has_incoming != has_outgoing:
             if len(x) < 2 * k:
-                in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
                 tips.append(x)
 
     for tip in tips:
@@ -301,11 +300,11 @@ def assemble(reads, k):
     # Map from reads to their nodes
     read_node_map = {}
     for read in reads:
-        split_read = []
-        for i in range(len(read) - k + 2):
-            split_read.append(read[i:i + k - 1])
-        read_node_map[read] = split_read
+        read_node_map[read] = []
 
+    for node in nodes:
+        for read in node_read_map[node]:
+            read_node_map[read].append(node)
 
     # Build contigs from reads
     contigs = []
@@ -326,10 +325,12 @@ def assemble(reads, k):
         # Store start of read, put read in contig, mark read nodes as visited
         start = read_node_map[read][0]
         node = start
-        contig = node[1:-1]
+        contig = start[1:-1]
 
         # Trace forward until we reach a dead end, building up end of contig
         while node is not None:
+            if node not in out_neighbors:
+                print('WTF', node in nodes)
             visited.add(node)
             contig += node[-1]
             next_options = out_neighbors[node].difference(visited)
@@ -347,14 +348,15 @@ def assemble(reads, k):
 
     print(contigs)
 
-    write_dot(nodes, edges, 'before')
-    collapse(nodes, edges)
-    write_dot(nodes, edges, 'after')
-    remove_tips(nodes, edges, k)
-    write_dot(nodes, edges, 'after')
+    # write_dot(nodes, edges, 'before')
+    #
+    # collapse(nodes, edges)
+    # remove_tips(nodes, edges, k)
+    # collapse(nodes, edges)
+    #
+    # write_dot(nodes, edges, 'after')
 
     print('N50 score: {}'.format(n50(contigs)))
-    
     with open('contigs.txt', 'w') as f:
         f.write('\n'.join(contigs))
 
