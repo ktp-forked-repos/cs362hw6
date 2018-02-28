@@ -193,7 +193,8 @@ def collapse(nodes, edges):
                 chains[starts_with_y].insert(0, x)
             else:
                 chains.append([x, y])
-                
+
+    print(chains)
             
     for chain in chains:
         # Merge them
@@ -273,6 +274,20 @@ def trace(read, next_options, read_map, remaining_reads):
     return read, node
 
 
+def get_neighbors(nodes, edges):
+    out_neighbors = {}
+    in_neighbors = {}
+    for node in nodes:
+        out_neighbors[node] = set()
+        in_neighbors[node] = set()
+
+    for x, y in edges:
+        out_neighbors[x].add(y)
+        in_neighbors[y].add(x)
+
+    return in_neighbors, out_neighbors
+
+
 def assemble(reads, k):
     """
     Assemble a set of reads into a set of contigs using a de Bruijn graph. Write
@@ -284,15 +299,7 @@ def assemble(reads, k):
 
     nodes, edges, read_map = build_de_bruijn(*get_kmers(reads, k))
 
-    out_neighbors = {}
-    in_neighbors = {}
-    for node in nodes:
-        out_neighbors[node] = set()
-        in_neighbors[node] = set()
-
-    for x, y in edges:
-        out_neighbors[x].add(y)
-        in_neighbors[y].add(x)
+    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
 
     # Map from reads to their nodes
     node_map = {}
@@ -343,11 +350,11 @@ def assemble(reads, k):
 
     print(contigs)
 
-    write_dot(nodes, edges, 'before')
-    # collapse(nodes, edges)
+    write_dot(edges, 'before')
+    collapse(nodes, edges)
 
     # remove_tips(nodes, edges, k)
-    write_dot(nodes, edges, 'after')
+    write_dot(edges, 'after')
 
     print('N50 score: {}'.format(n50(contigs)))
     
