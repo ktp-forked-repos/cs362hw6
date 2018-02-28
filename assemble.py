@@ -82,29 +82,29 @@ def build_de_bruijn(kmers, kmer_read_map):
     Build the de Bruijn graph from a list of k-mers.
     :param kmer_read_map: a dictionary storing which reads a kmer is in
     :param kmers: the k-mers to build the graph from
-    :return: the tuple (nodes, edges, read_map), where read_map stores which
+    :return: the tuple (nodes, edges, node_read_map), where node_read_map stores which
     reads a node is in
     """
 
     nodes = set()
     edges = {}
-    read_map = {}
+    node_read_map = {}
     
     for kmer in kmers:
         left = kmer[:-1]
         nodes.add(left)
-        set_map(read_map, left, kmer_read_map[kmer])
+        set_map(node_read_map, left, kmer_read_map[kmer])
 
         right = kmer[1:]
         nodes.add(right)
-        set_map(read_map, right, kmer_read_map[kmer])
+        set_map(node_read_map, right, kmer_read_map[kmer])
 
         if (left, right) not in edges:
             edges[left, right] = 1
         else:
             edges[left, right] += 1
 
-    return nodes, edges, read_map
+    return nodes, edges, node_read_map
 
 
 def delete_node(node, nodes, edges):
@@ -118,7 +118,7 @@ def delete_node(node, nodes, edges):
     nodes.remove(node)
     for x, y in set(edges.keys()):
         if x == node or y == node:
-            del edges[x, y]
+            edges.pop((x, y))
 
 
 def remove_tips(nodes, edges, k):
@@ -136,17 +136,16 @@ def remove_tips(nodes, edges, k):
         has_incoming = any((y, x) in edges for y in nodes)
         has_outgoing = any((x, y) in edges for y in nodes)
 
-        if not has_incoming or not has_outgoing:
+        if has_incoming != has_outgoing:
             if len(x) < 2 * k:
                 in_sum = sum(edges[y, x] for y in nodes if (y, x) in edges)
-                print('Trim tip with incoming sum: {}'.format(in_sum))
                 tips.append(x)
 
     for tip in tips:
         delete_node(tip, nodes, edges)
 
     
-def write_dot(edges, name):
+def write_dot(nodes, edges, name):
     """
     Write a graph to a dot file.
     :param edges: a dictionary of the edges in the graph
@@ -154,6 +153,8 @@ def write_dot(edges, name):
     :return: nothing
     """
     out = 'digraph mygraph {'
+    for node in nodes:
+        out += '"{}";\n'.format(node)
     for left, right in edges:
         out += '"{}"->"{}" [label="{}"];\n'.format(left, right,
                                                    edges[left, right])
@@ -161,18 +162,23 @@ def write_dot(edges, name):
     
     with open('{}.dot'.format(name), 'w') as f:
         f.write(out)
-        
-def collapse(nodes, edges, in_neighbors, out_neighbors):
+
+
+def collapse(nodes, edges):
     """
     Identify all k-mers in a set of reads.
     :param nodes: a set of nodes obtained by build_de_bruijn
     :param edges: a dictionary of edges in the graph
+    :param in_neighbors: dict
+    :param out_neighbors: dict
+    :param node_read_map: dict of nodes -> reads
     :return: the updated nodes and edges
     """
 
+    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
     chains = []
     
-    for x,y in edges:
+    for x, y in edges:
         xEdge = len(out_neighbors[x])
         yEdge = len(in_neighbors[y])
         # print('--> ', xEdge, yEdge)
@@ -194,58 +200,36 @@ def collapse(nodes, edges, in_neighbors, out_neighbors):
             else:
                 chains.append([x, y])
 
-    print(chains)
-            
     for chain in chains:
-        new = chain[0] + "".join(node[-1] for node in chain[1:])
+        new = chain[0] + ''.join(node[-1] for node in chain[1:])
         nodes.add(new)
+        in_neighbors[new] = set()
+        out_neighbors[new] = set()
+
+        # Add in neighbors to the chain node
         for neighbor in in_neighbors[chain[0]]:
             edges[neighbor, new] = edges[neighbor, chain[0]]
+            in_neighbors[new].add(neighbor)
+            out_neighbors[neighbor].add(new)
+
+        # Add out neighbors to the chain node
         for neighbor in out_neighbors[chain[-1]]:
             edges[new, neighbor] = edges[chain[-1], neighbor]
+            out_neighbors[new].add(neighbor)
+            in_neighbors[neighbor].add(new)
+
+    for chain in chains:
         for node in chain:
             delete_node(node, nodes, edges)
-    
-        
-
-def connected_components(nodes, edges):
-    neighbors = {}
-    for node in nodes:
-        neighbors[node] = set()
-
-    for x, y in edges:
-        neighbors[x].add(y)
-        neighbors[y].add(x)
-
-    unvisited = nodes.copy()
-    components = []
-
-    while len(unvisited) > 0:
-        component = []
-        to_visit = [unvisited.pop()]
-        visited = to_visit[:]
-
-        while len(to_visit) > 0:
-            current = to_visit.pop()
-            component.append(current)
-            unvisited.discard(current)
-            for neighbor in neighbors[current]:
-                if neighbor not in visited:
-                    to_visit.append(neighbor)
-                    visited.append(neighbor)
-
-        components.append(component)
-
-    return components
 
 
-def trace(read, next_options, read_map, remaining_reads):
+def trace(read, next_options, node_read_map, remaining_reads):
     """
     Move through the de Bruijn graph according to the current read and available
     neighbors.
     :param read: the current read
     :param next_options: a set of options for the next node to visit
-    :param read_map: a map from nodes to the reads they are in
+    :param node_read_map: a map from nodes to the reads they are in
     :param remaining_reads: the reads that have not yet been assigned to contigs
     :return: the new state of the trace in a (read, node) tuple
     """
@@ -258,9 +242,9 @@ def trace(read, next_options, read_map, remaining_reads):
     next_node = None
     backup_node = None
     for neighbor in next_options:
-        if read in read_map[neighbor]:
+        if read in node_read_map[neighbor]:
             next_node = neighbor
-        elif len(read_map[neighbor].intersection(remaining_reads)) > 0:
+        elif len(node_read_map[neighbor].intersection(remaining_reads)) > 0:
             backup_node = neighbor
 
     # If we aren't staying on the same read, this read is done
@@ -273,7 +257,7 @@ def trace(read, next_options, read_map, remaining_reads):
 
         # Go to the back up node, move to new read
         node = backup_node
-        read = read_map[node].intersection(remaining_reads).pop()
+        read = node_read_map[node].intersection(remaining_reads).pop()
         remaining_reads.remove(read)
     else:
         node = next_node
@@ -282,6 +266,12 @@ def trace(read, next_options, read_map, remaining_reads):
 
 
 def get_neighbors(nodes, edges):
+    """
+    Find all in and out neighbors of the nodes
+    :param nodes: the set of nodes
+    :param edges: the dict of edges
+    :return: the tuple (in, out) of dicts of in and out neighbors
+    """
     out_neighbors = {}
     in_neighbors = {}
     for node in nodes:
@@ -304,17 +294,18 @@ def assemble(reads, k):
     :return: nothing
     """
 
-    nodes, edges, read_map = build_de_bruijn(*get_kmers(reads, k))
-
-    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
+    nodes, edges, node_read_map = build_de_bruijn(*get_kmers(reads, k))
 
     # Map from reads to their nodes
-    node_map = {}
+    read_node_map = {}
     for read in reads:
         split_read = []
-        for i in range(len(read)-k+2):
-            split_read.append(read[i:i+k-1])
-        node_map[read] = split_read
+        for i in range(len(read) - k + 2):
+            split_read.append(read[i:i + k - 1])
+        read_node_map[read] = split_read
+
+    in_neighbors, out_neighbors = get_neighbors(nodes, edges)
+    print(len(in_neighbors))
 
     # Build contigs from reads
     contigs = []
@@ -325,25 +316,24 @@ def assemble(reads, k):
         read = remaining_reads.pop()
 
         # Skip reads with no kmers (edge effect)
-        if len(node_map[read]) == 0:
+        if len(read_node_map[read]) == 0:
             continue
 
         # Skip reads we have covered
-        if len(set(node_map[read]).difference(visited)) == 0:
+        if len(set(read_node_map[read]).difference(visited)) == 0:
             continue
 
         # Store start of read, put read in contig, mark read nodes as visited
-        start = node_map[read][0]
-        node = node_map[read][-1]
-        visited = visited.union(node_map[read])
-        contig = read[1:-1]
+        start = read_node_map[read][0]
+        node = start
+        contig = node[1:-1]
 
         # Trace forward until we reach a dead end, building up end of contig
         while node is not None:
             visited.add(node)
             contig += node[-1]
             next_options = out_neighbors[node].difference(visited)
-            read, node = trace(read, next_options, read_map, remaining_reads)
+            read, node = trace(read, next_options, node_read_map, remaining_reads)
 
         # Back up to start and trace backward, building up beginning of contig
         node = start
@@ -351,17 +341,17 @@ def assemble(reads, k):
             visited.add(node)
             contig = node[0] + contig
             next_options = in_neighbors[node].difference(visited)
-            read, node = trace(read, next_options, read_map, remaining_reads)
+            read, node = trace(read, next_options, node_read_map, remaining_reads)
 
         contigs.append(contig)
 
     print(contigs)
 
-    write_dot(edges, 'before')
+    write_dot(nodes, edges, 'before')
     collapse(nodes, edges)
-
-    # remove_tips(nodes, edges, k)
-    write_dot(edges, 'after')
+    remove_tips(nodes, edges, k)
+    collapse(nodes, edges)
+    write_dot(nodes, edges, 'after')
 
     print('N50 score: {}'.format(n50(contigs)))
     
